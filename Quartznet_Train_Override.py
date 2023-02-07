@@ -47,14 +47,6 @@ class EncDecCTCModelMultiTest(nemo_asr.models.EncDecCTCModel) :
 
 
     def validation_step(self, batch, batch_idx, dataloader_idx=0):
-        #print('\n\n\nCLASS OVERRIDDEN SUCCESSFULLY!!!\n\n\n\n')
-        #test_var = test_var + 1
-        #test_array.append(test_var)
-        #Test_WER()
-        #breakpoint()
-        #if dataloader_idx > 0 :
-        #print('\nbatch_idx: ' + str(batch_idx) + ' dataloader_idx: ' + str(dataloader_idx) + '\n' )
-        #val_compare_array[str(dataloader_idx)].append(batch_idx)
         signal, signal_len, transcript, transcript_len = batch
         if isinstance(batch, DALIOutputs) and batch.has_processed_signal:
             log_probs, encoded_len, predictions = self.forward(
@@ -72,29 +64,16 @@ class EncDecCTCModelMultiTest(nemo_asr.models.EncDecCTCModel) :
         wer, wer_num, wer_denom = self._wer.compute()
         self._wer.reset()
         
-        #breakpoint()
         Test_Step_Dict['val_loss_' + str(dataloader_idx)].append(loss_value.item())
         Test_Step_Dict['val_wer_' + str(dataloader_idx)].append(wer.item())
-
         if dataloader_idx == val_sets -1 and batch_idx == val_steps -1 :
-            #breakpoint()
-            #offset = -1
-            #print('Offset = -1')
+            
+            
             for key in Test_Epoch_Dict.keys() :
                 Test_Epoch_Dict[key].append(np.mean(Test_Step_Dict[key]))
                 Test_Step_Dict[key] = []
-        """elif dataloader_idx == val_sets -1 and batch_idx == val_steps -2 :
-            breakpoint()
-            offset = -2
-            print('Offset = -2')
-        elif dataloader_idx == val_sets -1 and batch_idx == val_steps -3 :
-            breakpoint()
-            offset = -3
-            print('Offset = -3')
-        elif dataloader_idx == val_sets -1 and batch_idx == val_steps:
-            breakpoint()
-            offset = 0
-            print('Offset = 0')"""
+                write_csv_file('test.csv', Test_Epoch_Dict)
+        
 
         #breakpoint()
         return {
@@ -134,247 +113,11 @@ from pytorch_lightning.utilities.exceptions import ExitGracefullyException, Misc
 
 class TrainerMultiTest(pl.Trainer):
 
-    #model_test = pl.LightningModule
-
-    """def fit(
-        self,
-        model: "pl.LightningModule",
-        train_dataloaders: Optional[Union[TRAIN_DATALOADERS, LightningDataModule]] = None,
-        val_dataloaders: Optional[EVAL_DATALOADERS] = None,
-        datamodule: Optional[LightningDataModule] = None,
-        train_dataloader=None,  # TODO: remove with 1.6
-        ckpt_path: Optional[str] = None,
-    ) -> None:
-        r""""""
-        Runs the full optimization routine.
-
-        Args:
-            model: Model to fit.
-
-            train_dataloaders: A collection of :class:`torch.utils.data.DataLoader` or a
-                :class:`~pytorch_lightning.core.datamodule.LightningDataModule` specifying training samples.
-                In the case of multiple dataloaders, please see this :ref:`page <multiple-training-dataloaders>`.
-
-            val_dataloaders: A :class:`torch.utils.data.DataLoader` or a sequence of them specifying validation samples.
-
-            ckpt_path: Path/URL of the checkpoint from which training is resumed. If there is
-                no checkpoint file at the path, an exception is raised. If resuming from mid-epoch checkpoint,
-                training will start from the beginning of the next epoch.
-
-            datamodule: An instance of :class:`~pytorch_lightning.core.datamodule.LightningDataModule`.
-        """
-        #breakpoint()
-        #self.model_test = model
-        #self.test(model)
-
-        #breakpoint()
-
-    """if train_dataloader is not None:
-            rank_zero_deprecation(
-                "`trainer.fit(train_dataloader)` is deprecated in v1.4 and will be removed in v1.6."
-                " Use `trainer.fit(train_dataloaders)` instead. HINT: added 's'"
-            )
-            train_dataloaders = train_dataloader
-        self._call_and_handle_interrupt(
-            self._fit_impl, model, train_dataloaders, val_dataloaders, datamodule, ckpt_path
-        )
-
-
-    def _test_impl(
-        self,
-        model: Optional["pl.LightningModule"] = None,
-        dataloaders: Optional[Union[EVAL_DATALOADERS, LightningDataModule]] = None,
-        ckpt_path: Optional[str] = None,
-        verbose: bool = True,
-        datamodule: Optional[LightningDataModule] = None,
-    ) -> _EVALUATE_OUTPUT:
-        # --------------------
-        # SETUP HOOK
-        # --------------------
-        TrainerMultiTest._log_api_event("test")
-        self.verbose_evaluate = verbose
-
-        self.state.fn = TrainerFn.TESTING
-        self.state.status = TrainerStatus.RUNNING
-        breakpoint()
-        self.testing = True
-
-        # if a datamodule comes in as the second arg, then fix it for the user
-        if isinstance(dataloaders, LightningDataModule):
-            datamodule = dataloaders
-            dataloaders = None
-        # If you supply a datamodule you can't supply test_dataloaders
-        if dataloaders is not None and datamodule:
-            raise MisconfigurationException("You cannot pass both `trainer.test(dataloaders=..., datamodule=...)`")
-
-        model_provided = model is not None
-        model = model or self.lightning_module
-        if model is None:
-            raise MisconfigurationException(
-                "`model` must be provided to `trainer.test()` when it hasn't been passed in a previous run"
-            )
-
-        # links data to the trainer
-        self._data_connector.attach_data(model, test_dataloaders=dataloaders, datamodule=datamodule)
-
-        self.tested_ckpt_path = self.__set_ckpt_path(
-            ckpt_path, model_provided=model_provided, model_connected=self.lightning_module is not None
-        )
-
-        # run test
-        results = self._run(model, ckpt_path=self.tested_ckpt_path)
-
-        assert self.state.stopped
-        breakpoint()
-        self.testing = False
-
-        return results
-
-    def validate(
-        self,
-        model: Optional["pl.LightningModule"] = None,
-        dataloaders: Optional[Union[EVAL_DATALOADERS, LightningDataModule]] = None,
-        ckpt_path: Optional[str] = None,
-        verbose: bool = True,
-        datamodule: Optional[LightningDataModule] = None,
-        val_dataloaders=None,  # TODO: remove with 1.6
-    ) -> _EVALUATE_OUTPUT:
-        r""""""
-        Perform one evaluation epoch over the validation set.
-
-        Args:
-            model: The model to validate.
-
-            dataloaders: A :class:`torch.utils.data.DataLoader` or a sequence of them,
-                or a :class:`~pytorch_lightning.core.datamodule.LightningDataModule` specifying validation samples.
-
-            ckpt_path: Either ``best`` or path to the checkpoint you wish to validate.
-                If ``None`` and the model instance was passed, use the current weights.
-                Otherwise, the best model checkpoint from the previous ``trainer.fit`` call will be loaded
-                if a checkpoint callback is configured.
-
-            verbose: If True, prints the validation results.
-
-            datamodule: An instance of :class:`~pytorch_lightning.core.datamodule.LightningDataModule`.
-
-        Returns:
-            List of dictionaries with metrics logged during the validation phase, e.g., in model- or callback hooks
-            like :meth:`~pytorch_lightning.core.lightning.LightningModule.validation_step`,
-            :meth:`~pytorch_lightning.core.lightning.LightningModule.validation_epoch_end`, etc.
-            The length of the list corresponds to the number of validation dataloaders used.
-        """
-    """ if val_dataloaders is not None:
-            rank_zero_deprecation(
-                "`trainer.validate(val_dataloaders)` is deprecated in v1.4 and will be removed in v1.6."
-                " Use `trainer.validate(dataloaders)` instead."
-            )
-            dataloaders = val_dataloaders
-        print('\n\n\n\ TRAINER VALIDATE METHOD OVERRIDEN SUCCESSFULLY!!!\n\n\n')
-        breakpoint()
-        return self._call_and_handle_interrupt(self._validate_impl, model, dataloaders, ckpt_path, verbose, datamodule)  
     
-    @property
-    def validate_loop(self) -> EvaluationLoop:
-        print('\n\n\nVALIDATION LOOP IN CLASS TRAINER OVERRIDEN!!!\n\n\n\n')
-        breakpoint()
-        return self._validate_loop
-
-    @property
-    def testing(self) -> bool:
-        #print('\n\n\nVALIDATION LOOP IN CLASS TRAINER OVERRIDEN!!!\n\n\n\n')
-        #breakpoint()
-        return self.state.stage == RunningStage.TESTING"""
-
-    """def call_hook""" #### POSSIBILITY
-
-    """def _evaluation_loop(self) -> EvaluationLoop:""" ###Possibility
-
-    """def sanity_checking(self) -> bool:""" #POSSIBILITY
-
-    """def _run_evaluate(self) -> _EVALUATE_OUTPUT:
-        #breakpoint()
-        if not self.is_global_zero and self.progress_bar_callback is not None:
-            self.progress_bar_callback.disable()
-
-        assert self.evaluating
-
-        # reload dataloaders
-        self._evaluation_loop._reload_evaluation_dataloaders()
-
-        # reset trainer on this loop and all child loops in case user connected a custom loop
-        self._evaluation_loop.trainer = self
-
-        with self.profiler.profile(f"run_{self.state.stage}_evaluation"), torch.no_grad():
-            eval_loop_results = self._evaluation_loop.run()
-
-        # remove the tensors from the eval results
-        for result in eval_loop_results:
-            if isinstance(result, dict):
-                for k, v in result.items():
-                    if isinstance(v, torch.Tensor):
-                        result[k] = v.cpu().item()
-        #breakpoint()
-
-        return eval_loop_results
-
-    @validate_loop.setter
-    def validate_loop(self, loop: EvaluationLoop):"""
-    """Attach a custom validation loop to this Trainer.
-
-        It will run with
-        :meth:`~pytorch_lighting.trainer.trainer.Trainer.validate`. Note that this loop is different from the one
-        running during training inside the :meth:`pytorch_lightning.trainer.trainer.Trainer.fit` call.
-        """
-    """print('\n\n\nVALIDATION LOOP IN CLASS TRAINER OVERRIDEN!!!\n\n\n\n')
-        loop.trainer = self
-        self._validate_loop = loop  """
-
     def save_checkpoint(self, filepath: _PATH, weights_only: bool = False) -> None:
         
-        
-        #breakpoint()
-
-        
-
-        #self.test(quartznet)
-        #thread.join()
-        # run the thread
-        #thread.run()
-        # wait for the thread to finish
-        #print('Waiting for the thread...')
-        #wer_L, Cor, Sub, Ins, Del, Err, Cor_num, Sub_num, Ins_num, Del_num = wer_ISD('Hello World!', 'Hello World! two')
-        #print('\n\nCalculated WER as: ' + str(wer_L)+ '\n\n')
-        #thread.join()
-        #thread = Thread(target=Test_WER)
-        #thread.start()
         self.checkpoint_connector.save_checkpoint(filepath, weights_only)
-        #thread.join()
-
-        #self.checkpoint_connector.save_checkpoint(filepath, weights_only)
-
-
-        """ breakpoint()
-        #model = sys.argv[8]
-        #test_checkpoint = nemo_asr.models.EncDecCTCModel.restore_from(model, trainer = trainer)
-        #test_checkpoint = nemo_asr.models.EncDecCTCModel(cfg=DictConfig(params['model']), trainer=trainer)
-        #test_checkpoint = nemo_asr.models.EncDecCTCModel.load_from_checkpoint(checkpoint_path=filepath)#.cuda()
-        #test_checkpoint.set_trainer(self)
         
-        #breakpoint()
-        trainer.test(quartznet)
-        
-        breakpoint()"""
-
-
-    
-
-
-
-#class FitloopTest(FitLoop):
-
-
-
-
 
 
 
@@ -524,19 +267,19 @@ trainer_glob = pl.Trainer(
         print('Training from pretrained Model: QuartzNet15x5Base-En')
 
         model = 'QuartzNet15x5Base-En'
-        quartznet = nemo_asr.models.EncDecCTCModel.from_pretrained(model_name=model, trainer = trainer_glob)
+        quartznet = EncDecCTCModelMultiTest.from_pretrained(model_name=model, trainer = trainer_glob)
 
     elif str(sys.argv[5]) == 'Spanish' :
         model = 'stt_es_quartznet15x5'
         print('Training from pretrained Model: ' + model)
 
         model = 'stt_es_quartznet15x5'
-        quartznet = nemo_asr.models.EncDecCTCModel.from_pretrained(model_name=model, trainer = trainer_glob)
+        quartznet = EncDecCTCModelMultiTest.from_pretrained(model_name=model, trainer = trainer_glob)
 
     elif str(sys.argv[5]) == 'Transfer' :
         model = sys.argv[8]
         #breakpoint()
-        quartznet = nemo_asr.models.EncDecCTCModel.restore_from(model, trainer = trainer_glob)
+        quartznet = EncDecCTCModelMultiTest.restore_from(model, trainer = trainer_glob)
         quartznet.change_vocabulary(
         new_vocabulary= params['model']['labels']
     )
@@ -544,7 +287,7 @@ trainer_glob = pl.Trainer(
     elif str(sys.argv[5]) == 'Checkpoint' :
         model = sys.argv[8]
         #breakpoint()
-        quartznet = nemo_asr.models.EncDecCTCModel.load_from_checkpoint(checkpoint_path=model).cuda()
+        quartznet = EncDecCTCModelMultiTest.load_from_checkpoint(checkpoint_path=model).cuda()
         quartznet.set_trainer(trainer_glob)
 
 
