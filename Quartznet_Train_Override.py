@@ -28,7 +28,7 @@ sys.argv[2] == lr
 sys.argv[3] == manifest folder
 sys.argv[4] == Save_Model_name
 sys.argv[5] == pretrained T/F
-sys.argv[6] == Output Directory
+sys.argv[6] == validation manifests folder
 sys.argv[7] == config file
 sys.argv[8] == restore file
 
@@ -60,8 +60,8 @@ class EncDecCTCModelMultiTest(nemo_asr.models.EncDecCTCModel) :
         wer, wer_num, wer_denom = self._wer.compute()
         self._wer.reset()
         
-        loss_key = 'val_loss_' + key_values_array[dataloader_idx]
-        wer_key = 'val_wer_' + key_values_array[dataloader_idx]
+        loss_key = key_values_array[dataloader_idx] + '_loss'
+        wer_key = key_values_array[dataloader_idx] + '_wer'
         Test_Step_Dict[loss_key].append(loss_value.item())
         Test_Step_Dict[wer_key].append(wer.item())
         if dataloader_idx == val_sets -1 and batch_idx == val_steps -1 :
@@ -190,10 +190,11 @@ trainer_glob = pl.Trainer(
     train_manifest = data_dir + '/manifests/' + manifest_fol + '/train_manifest.json'
     test_manifest = data_dir + '/manifests/' + manifest_fol + '/test_manifest.json'
     validation_manifest = data_dir + '/manifests/' + manifest_fol + '/valid_manifest.json'
+    validation_top_dir = data_dir +  '/manifests/' + str(sys.argv[6]) 
 
     #multi_val = ['manifests/15_MLSSpanishPlusEngLibri/test_clean_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/test_manifest_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/test_manifest_MLSSpanish.json', 'manifests/15_MLSSpanishPlusEngLibri/test_manifest.json']
-    multi_val = ['manifests/0_full_manifest/valid_manifest.json', 'manifests/0_full_manifest/test_manifest.json', 'manifests/15_MLSSpanishPlusEngLibri/test_clean_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/test_manifest_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/test_other_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/valid_manifest_clean_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/valid_manifest_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/valid_manifest_other_EngLibri.json']
-    
+    #multi_val = ['manifests/0_full_manifest/valid_manifest.json', 'manifests/0_full_manifest/test_manifest.json', 'manifests/15_MLSSpanishPlusEngLibri/test_clean_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/test_manifest_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/test_other_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/valid_manifest_clean_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/valid_manifest_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/valid_manifest_other_EngLibri.json']
+    multi_val = [validation_top_dir + '/' + f for f in os.listdir(validation_top_dir) if os.path.isfile(os.path.join(validation_top_dir, f)) and not 'train' in f]
     val_sets = len(multi_val)
     valid_path = multi_val[-1]
     valid_steps_array = []
@@ -212,7 +213,7 @@ trainer_glob = pl.Trainer(
     global key_values_array
     key_values_array = []
     for val in multi_val :
-        point = val.rfind('.') -1
+        point = val.rfind('.') 
         slash = val.rfind('/') + 1
         val_key = val[slash:point]
         key_values_array.append(val_key)
@@ -221,8 +222,8 @@ trainer_glob = pl.Trainer(
     Test_Step_Dict = {}
     Test_Epoch_Dict = {}
     for i in range(len(multi_val)) :
-        loss_key = 'val_loss_' + key_values_array[i]
-        wer_key = 'val_wer_' + key_values_array[i]
+        loss_key = key_values_array[i] + '_loss'
+        wer_key = key_values_array[i] + '_wer'
         Test_Epoch_Dict[loss_key] = []
         Test_Epoch_Dict[wer_key] = []
         Test_Step_Dict[loss_key] = []
@@ -314,16 +315,16 @@ trainer_glob = pl.Trainer(
     
 
     
-    new_dir = sys.argv[6]
+    #new_dir = sys.argv[6]
 
-    if not os.path.exists(new_dir):
-            os.makedirs(new_dir)
+    #if not os.path.exists(new_dir):
+            #os.makedirs(new_dir)
 
     model = str(sys.argv[4])
     append = 0
     date.today().isoformat()
 
-    model_name = os.path.join(new_dir, model[: len(model)] + date.today().isoformat() + '_V')
+    #model_name = os.path.join(new_dir, model[: len(model)] + date.today().isoformat() + '_V')
     csv_name = os.path.join(exp_dir, model[: len(model)] + date.today().isoformat() + '_V')
 
 
