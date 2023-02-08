@@ -35,10 +35,6 @@ sys.argv[8] == restore file
 
 """
 
-#global test_array = []
-#global test_var 
-
-#global test_array.append(test_var)
 
 from nemo.collections.asr.data.audio_to_text_dali import DALIOutputs
 #import tensorflow as tf
@@ -64,8 +60,10 @@ class EncDecCTCModelMultiTest(nemo_asr.models.EncDecCTCModel) :
         wer, wer_num, wer_denom = self._wer.compute()
         self._wer.reset()
         
-        Test_Step_Dict['val_loss_' + str(dataloader_idx)].append(loss_value.item())
-        Test_Step_Dict['val_wer_' + str(dataloader_idx)].append(wer.item())
+        loss_key = 'val_loss_' + key_values_array[dataloader_idx]
+        wer_key = 'val_wer_' + key_values_array[dataloader_idx]
+        Test_Step_Dict[loss_key].append(loss_value.item())
+        Test_Step_Dict[wer_key].append(wer.item())
         if dataloader_idx == val_sets -1 and batch_idx == val_steps -1 :
             
             
@@ -195,6 +193,7 @@ trainer_glob = pl.Trainer(
 
     #multi_val = ['manifests/15_MLSSpanishPlusEngLibri/test_clean_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/test_manifest_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/test_manifest_MLSSpanish.json', 'manifests/15_MLSSpanishPlusEngLibri/test_manifest.json']
     multi_val = ['manifests/0_full_manifest/valid_manifest.json', 'manifests/0_full_manifest/test_manifest.json', 'manifests/15_MLSSpanishPlusEngLibri/test_clean_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/test_manifest_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/test_other_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/valid_manifest_clean_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/valid_manifest_EngLibri.json', 'manifests/15_MLSSpanishPlusEngLibri/valid_manifest_other_EngLibri.json']
+    
     val_sets = len(multi_val)
     valid_path = multi_val[-1]
     valid_steps_array = []
@@ -210,19 +209,29 @@ trainer_glob = pl.Trainer(
         #first_step = one_step + 2
     val_steps = valid_steps_array[-1]
 
+    global key_values_array
+    key_values_array = []
+    for val in multi_val :
+        point = val.rfind('.') -1
+        slash = val.rfind('/') + 1
+        val_key = val[slash:point]
+        key_values_array.append(val_key)
+
+
     Test_Step_Dict = {}
     Test_Epoch_Dict = {}
     for i in range(len(multi_val)) :
-        Test_Epoch_Dict['val_loss_' + str(i)] = []
-        Test_Epoch_Dict['val_wer_' + str(i)] = []
-        Test_Step_Dict['val_loss_' + str(i)] = []
-        Test_Step_Dict['val_wer_' + str(i)] = []
+        loss_key = 'val_loss_' + key_values_array[i]
+        wer_key = 'val_wer_' + key_values_array[i]
+        Test_Epoch_Dict[loss_key] = []
+        Test_Epoch_Dict[wer_key] = []
+        Test_Step_Dict[loss_key] = []
+        Test_Step_Dict[wer_key] = []
         val_compare_array[str(i)] = []
         
 
 
 
-    #breakpoint()
     params['model']['train_ds']['max_duration'] = 60.0
     params['model']['train_ds']['manifest_filepath'] = train_manifest
     #params['model']['validation_ds']['manifest_filepath'] = validation_manifest
@@ -246,21 +255,14 @@ trainer_glob = pl.Trainer(
 
     params['trainer']['max_epochs'] = epoch
 
-    #breakpoint()
-    # trainer_glob = pl.Trainer(gpus=[0], max_epochs=epoch,  enable_progress_bar=True, logger=False)
-    #trainer_glob = pl.Trainer(params['trainer'])
-    #trainer_glob.resume_from_checkpoint = 'QuartzNet15x5/version_3/checkpoints'
+
     exp_dir = exp_manager(trainer_glob, params['exp_manager'])
 
-    #breakpoint()
 
     new_opt = copy.deepcopy(params['model']['optim'])
 
     print('Learning Rate set to: ', str(sys.argv[2]))
     new_opt['lr'] = float(sys.argv[2])
-
-    #breakpoint()        
-    
 
 
     if str(sys.argv[5]) == 'English' :
@@ -298,38 +300,17 @@ trainer_glob = pl.Trainer(
         quartznet = EncDecCTCModelMultiTest(cfg=DictConfig(params['model']), trainer=trainer_glob)
 
     if  'Checkpoint' not in str(sys.argv[5]) :
-        #breakpoint()
         quartznet.setup_optimization(optim_config=DictConfig(new_opt))
         quartznet.setup_training_data(train_data_config=params['model']['train_ds'])
         #quartznet.setup_validation_data(val_data_config=params['model']['validation_ds'])
         quartznet.setup_multiple_validation_data(val_data_config=params['model']['validation_ds'])
         quartznet.setup_test_data(test_data_config=params['model']['test_ds'])
-    #breakpoint()
-    #trainer_glob.test(quartznet)
-    #breakpoint()
-    global thread
-    #thread = Thread(target=Test_WER,  daemon=True)#, args=(1.5, 'New message from another thread'))
-    #thread.start()
+  
     trainer_glob.fit(quartznet)
-    #thread_fit = Thread(target=, args=quartznet,  daemon=True)
-    #thread_fit.start()
-    #thread_fit.join()
-    #thread.join()
     
-    #breakpoint()
-
-    write_csv_file('test.csv', Test_Epoch_Dict)
-
-    #print(test_array)
-    #breakpoint()
-    #test_var = trainer_glob.test(quartznet)
-    #breakpoint()
-
-
-
+    #write_csv_file('test.csv', Test_Epoch_Dict)
 
     
-    #breakpoint() 
     
 
     
@@ -343,14 +324,18 @@ trainer_glob = pl.Trainer(
     date.today().isoformat()
 
     model_name = os.path.join(new_dir, model[: len(model)] + date.today().isoformat() + '_V')
+    csv_name = os.path.join(exp_dir, model[: len(model)] + date.today().isoformat() + '_V')
 
 
     while(os.path.isfile(model_name + '.nemo')):
         append += 1
 
     model_name = model_name[:len(model_name)] + str(append)
+    csv_name = csv_name[:len(model_name)] + str(append)
     model_name += '.nemo'
-    quartznet.save_to(model_name)
+    csv_name += '.csv'
+    #quartznet.save_to(model_name)
+    write_csv_file(csv_name, Test_Epoch_Dict)
 
 
 class NoStdStreams(object):
