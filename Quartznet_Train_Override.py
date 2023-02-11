@@ -326,7 +326,7 @@ class EncDecCTCModelMultiTest(nemo_asr.models.EncDecCTCModel) :
             #breakpoint()
             step_counter += 1
             #print(step_counter)
-            if batch_idx == val_steps -1 or :
+            if batch_idx == val_steps -1 :
                 Test_Epoch_Dict['Epoch'].append(epoch_count)#str(#))
                 for key in Test_Epoch_Dict.keys() :
                     if 'Epoch' not in key :
