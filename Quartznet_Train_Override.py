@@ -320,7 +320,7 @@ class EncDecCTCModelMultiTest(nemo_asr.models.EncDecCTCModel) :
             Test_Step_Dict[loss_key].append(loss_value.item())
             Test_Step_Dict[wer_key].append(wer.item())
         #breakpoint()
-        if  (step_counter == 2 and sanity_check == 0)
+        if  (step_counter == 2 and sanity_check == 0) :
             sanity_check = 1
         if dataloader_idx == val_sets -1 :
             #breakpoint()
