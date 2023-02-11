@@ -80,7 +80,7 @@ def main() :
     config_path = sys.argv[7]
 
     step_count = 0
-    batch_size= 12
+    batch_size= 8
  
     ## Load params from config.yaml file    
     yaml = YAML(typ='safe')
@@ -217,7 +217,7 @@ def main() :
 
 
         epoch_count += 1
-        breakpoint()
+        #breakpoint()
         quartznet.change_vocabulary(
         new_vocabulary= params['model']['labels']
         )
@@ -260,7 +260,7 @@ def main() :
         quartznet.setup_multiple_validation_data(val_data_config=params['model']['validation_ds'])
         quartznet.setup_test_data(test_data_config=params['model']['test_ds'])
     
-    breakpoint()
+    #breakpoint()
     trainer_Multi.fit(quartznet)
     #breakpoint()
 
