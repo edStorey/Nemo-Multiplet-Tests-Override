@@ -47,9 +47,10 @@ def main() :
     global key_values_array
     global step_counter
     global epoch_count
+    global sanity_check
 
 
-
+    sanity_check = 0
     epoch_count = 0
     step_counter = 0
     epoch = int(sys.argv[1])
@@ -57,8 +58,8 @@ def main() :
     ## Define trainer from TrainerMultiTest Child Class]
     debug_gpus = [0]
     boole_gpus = [0, 1]
-    gpus = boole_gpus
-    trainer_Multi = pl.Trainer(gpus=gpus, max_epochs=epoch, enable_progress_bar=True, logger=False, accelerator='ddp')
+    gpus = debug_gpus
+    trainer_Multi = pl.Trainer(gpus=gpus, max_epochs=epoch, enable_progress_bar=True, logger=False) #, accelerator='ddp')
     del trainer_Multi.callbacks[3]
     
     print('No of Epochs set to: ', str(sys.argv[1]))
@@ -186,9 +187,58 @@ def main() :
         model = sys.argv[8]
         #breakpoint()
         quartznet = EncDecCTCModelMultiTest.restore_from(model, trainer = trainer_Multi)
+        quartznet.setup_optimization(optim_config=DictConfig(new_opt))
+        quartznet.setup_training_data(train_data_config=params['model']['train_ds'])
+        #quartznet.setup_validation_data(val_data_config=params['model']['validation_ds'])
+        quartznet.setup_multiple_validation_data(val_data_config=params['model']['validation_ds'])
+        quartznet.setup_test_data(test_data_config=params['model']['test_ds'])
+
+        epoch_count = -2
+
+        Test_Epoch_Dict['Epoch'].append(epoch_count)
+        for t in range(len(multi_val)) :
+
+            loss_key = key_values_array[t] + '_loss'
+            wer_key = key_values_array[t] + '_wer'
+            params['model']['test_ds']['manifest_filepath']= multi_val[t]
+            quartznet.setup_test_data(params['model']['test_ds'])
+            breakpoint()
+            if 'Spa' not in  key_values_array[t] :
+                test_var = trainer_Multi.test(quartznet) ###, verbose = False)
+                test_string = 'For file' + str(t) +' : ' + str(test_var) + '\n'
+                Test_Epoch_Dict[loss_key].append(test_var[0]['test_loss'])
+                Test_Epoch_Dict[wer_key].append(test_var[0]['test_wer'])
+            else :
+                Test_Epoch_Dict[loss_key].append('N/A')
+                Test_Epoch_Dict[wer_key].append('N/A')
+
+
+        epoch_count += 1
+        breakpoint()
         quartznet.change_vocabulary(
         new_vocabulary= params['model']['labels']
-    )
+        )
+
+        Test_Epoch_Dict['Epoch'].append(epoch_count)
+        for t in range(len(multi_val)) :
+            loss_key = key_values_array[t] + '_loss'
+            wer_key = key_values_array[t] + '_wer'
+            params['model']['test_ds']['manifest_filepath']= multi_val[t]
+            quartznet.setup_test_data(params['model']['test_ds'])
+            
+            test_var = trainer_Multi.test(quartznet) ###, verbose = False)
+            test_string = 'For file' + str(t) +' : ' + str(test_var) + '\n'
+            print(test_string)
+
+            """tests_array += test_string
+            key = t[:len(t)-json_len]
+            key_loss = key + '_loss'
+            key_wer = key + '_wer'"""
+            #breakpoint()
+            Test_Epoch_Dict[loss_key].append(test_var[0]['test_loss'])
+            Test_Epoch_Dict[wer_key].append(test_var[0]['test_wer'])
+        epoch_count += 1
+    
 
     elif str(sys.argv[6]) == 'Checkpoint' :
         model = sys.argv[8]
@@ -206,7 +256,8 @@ def main() :
         #quartznet.setup_validation_data(val_data_config=params['model']['validation_ds'])
         quartznet.setup_multiple_validation_data(val_data_config=params['model']['validation_ds'])
         quartznet.setup_test_data(test_data_config=params['model']['test_ds'])
-  
+    
+    breakpoint()
     trainer_Multi.fit(quartznet)
     #breakpoint()
 
@@ -245,6 +296,8 @@ class EncDecCTCModelMultiTest(nemo_asr.models.EncDecCTCModel) :
 
         global step_counter
         global epoch_count
+        global sanity_check
+
         signal, signal_len, transcript, transcript_len = batch
         if isinstance(batch, DALIOutputs) and batch.has_processed_signal:
             log_probs, encoded_len, predictions = self.forward(
@@ -261,16 +314,19 @@ class EncDecCTCModelMultiTest(nemo_asr.models.EncDecCTCModel) :
         )
         wer, wer_num, wer_denom = self._wer.compute()
         self._wer.reset()
-        loss_key = key_values_array[dataloader_idx] + '_loss'
-        wer_key = key_values_array[dataloader_idx] + '_wer'
-        Test_Step_Dict[loss_key].append(loss_value.item())
-        Test_Step_Dict[wer_key].append(wer.item())
+        if sanity_check == 1 :
+            loss_key = key_values_array[dataloader_idx] + '_loss'
+            wer_key = key_values_array[dataloader_idx] + '_wer'
+            Test_Step_Dict[loss_key].append(loss_value.item())
+            Test_Step_Dict[wer_key].append(wer.item())
         #breakpoint()
+        if  (step_counter == 2 and sanity_check == 0)
+            sanity_check = 1
         if dataloader_idx == val_sets -1 :
             #breakpoint()
             step_counter += 1
             #print(step_counter)
-            if batch_idx == val_steps -1 :
+            if batch_idx == val_steps -1 or :
                 Test_Epoch_Dict['Epoch'].append(epoch_count)#str(#))
                 for key in Test_Epoch_Dict.keys() :
                     if 'Epoch' not in key :
@@ -278,7 +334,7 @@ class EncDecCTCModelMultiTest(nemo_asr.models.EncDecCTCModel) :
                         Test_Step_Dict[key] = []
                         csv_name = 'current_losswer_values.csv'
                         write_csv_file(os.path.join(csv_exp_dir, csv_name), Test_Epoch_Dict)
-                    
+                sanity_check = 1    
                 epoch_count += 1
         
         return {
