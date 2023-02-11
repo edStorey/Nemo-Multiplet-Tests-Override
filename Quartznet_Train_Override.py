@@ -20,7 +20,7 @@ data_dir = '.'
 
 
 """
-sys.argv[0] == Quartznet_Train.py
+sys.argv[0] == Quartznet_Train_Override.py
 sys.argv[1] == epoch
 sys.argv[2] == lr
 sys.argv[3] == training manifest folder
