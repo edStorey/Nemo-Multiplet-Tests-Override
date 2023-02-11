@@ -29,6 +29,7 @@ sys.argv[5] == Experiment Name
 sys.argv[6] == pretrained T/F
 sys.argv[7] == config file
 sys.argv[8] == restore file
+sys.argv[9] == if this exists in a valid filename ignore it in first test run
 
 
 """
@@ -79,7 +80,7 @@ def main() :
     config_path = sys.argv[7]
 
     step_count = 0
-    batch_size= 16
+    batch_size= 12
  
     ## Load params from config.yaml file    
     yaml = YAML(typ='safe')
@@ -195,6 +196,8 @@ def main() :
 
         epoch_count = -2
 
+        avoid_key_word = sys.argv[9]
+
         Test_Epoch_Dict['Epoch'].append(epoch_count)
         for t in range(len(multi_val)) :
 
@@ -202,8 +205,8 @@ def main() :
             wer_key = key_values_array[t] + '_wer'
             params['model']['test_ds']['manifest_filepath']= multi_val[t]
             quartznet.setup_test_data(params['model']['test_ds'])
-            breakpoint()
-            if 'Spa' not in  key_values_array[t] :
+            #breakpoint()
+            if avoid_key_word not in  key_values_array[t] :
                 test_var = trainer_Multi.test(quartznet) ###, verbose = False)
                 test_string = 'For file' + str(t) +' : ' + str(test_var) + '\n'
                 Test_Epoch_Dict[loss_key].append(test_var[0]['test_loss'])
